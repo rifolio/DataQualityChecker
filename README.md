@@ -24,7 +24,7 @@ Activate the virtual environment using:
 
 For Mac
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 For Windows:
@@ -56,5 +56,5 @@ geotext
 4. Run the program by executing the following command in your terminal:
 
 ```bash
-python data_type_identifier.py
+python main.py
 ```

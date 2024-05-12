@@ -1,13 +1,13 @@
 import pandas as pd
 from geotext import GeoText
 import re
-from datetime import datetime
 
 class DataTypeIdentifier:
     def __init__(self, data):
         self.data = data
         self.column_data_types = {}
-        self.data_type_counts = {}
+        self.data_type_counts = {'Date': 0, 'Price': 0, 'Telephone Number': 0, 'Email Address': 0,
+                                 'Link (URL)': 0, 'Country': 0, 'City': 0, 'Name or Text': 0}
         self.missing_value_counts = {}
         self.missing_columns_flag = False
 
@@ -19,47 +19,52 @@ class DataTypeIdentifier:
                 self.missing_value_counts[col] = missing_values
                 self.missing_columns_flag = True
 
-            if self._check_date(col):
+            if self.check_date(col):
                 self.column_data_types[col] = 'Date'
-            elif self._check_telephone_number(col):
-                self.column_data_types[col] = 'Telephone Number'
-            elif self._check_email_address(col):
-                self.column_data_types[col] = 'Email Address'
-            elif self._check_url(col):
-                self.column_data_types[col] = 'Link (URL)'
-            elif self._check_price(col):
+                self.data_type_counts['Date'] += 1
+            elif self.check_price(col):
                 self.column_data_types[col] = 'Price'
-            elif self._check_country(col):
+                self.data_type_counts['Price'] += 1
+            elif self.check_telephone_number(col):
+                self.column_data_types[col] = 'Telephone Number'
+                self.data_type_counts['Telephone Number'] += 1
+            elif self.check_email_address(col):
+                self.column_data_types[col] = 'Email Address'
+                self.data_type_counts['Email Address'] += 1
+            elif self.check_url(col):
+                self.column_data_types[col] = 'Link (URL)'
+                self.data_type_counts['Link (URL)'] += 1
+            elif self.check_country(col):
                 self.column_data_types[col] = 'Country'
-            elif self._check_city(col):
+                self.data_type_counts['Country'] += 1
+            elif self.check_city(col):
                 self.column_data_types[col] = 'City'
+                self.data_type_counts['City'] += 1
             else:
                 self.column_data_types[col] = 'Name or Text'
+                self.data_type_counts['Name or Text'] += 1
 
-            self.data_type_counts.setdefault(self.column_data_types[col], 0)
-            self.data_type_counts[self.column_data_types[col]] += 1
-
-    def _check_date(self, col):
+    def check_date(self, col):
         return self.data[col].apply(lambda x: isinstance(x, str) and pd.notna(pd.to_datetime(x, errors='coerce'))).any()
 
-    def _check_telephone_number(self, col):
-        return self.data[col].astype(str).str.match(r'^\+?[0-9()-]+$').any()
+    def check_telephone_number(self, col):
+        return self.data[col].astype(str).str.match(r'^(\+?[0-9() -]{7,15})$').any()
 
-    def _check_email_address(self, col):
+    def check_email_address(self, col):
         return self.data[col].astype(str).str.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').any()
 
-    def _check_url(self, col):
+    def check_url(self, col):
         return self.data[col].astype(str).str.match(
-            r'(https?://)?(www\.)?[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&:/~\+#]*[\w\-\@?^=%&/~\+#])?').any()
+            r'^(https?://)?(www\.)?[\w\-]+(\.[\w\-]+)+([\w\-\.,@?^=%&:/~\+#]*[\w\-\@?^=%&/~\+#])?$').any()
 
-    def _check_price(self, col):
-        return self.data[col].astype(str).str.match(r'^\d+(\.\d{1,2})?$').any()
+    def check_price(self, col):
+        return self.data[col].astype(str).str.match(r'^[$€]?\d+(\.\d{1,3})?[$€]?$').any()
 
-    def _check_country(self, col):
-        return (self.data[col].astype(str).str.strip().apply(lambda x: x.title() in GeoText(x).countries)).all()
+    def check_country(self, col):
+        return (self.data[col].astype(str).str.strip().apply(lambda x: x.title() in GeoText(x).countries)).any()
 
-    def _check_city(self, col):
-        return (self.data[col].astype(str).str.strip().apply(lambda x: x.title() in GeoText(x).cities)).all()
+    def check_city(self, col):
+        return (self.data[col].astype(str).str.strip().apply(lambda x: x.title() in GeoText(x).cities)).any()
 
     def print_results(self):
         for col, data_type in self.column_data_types.items():
@@ -76,11 +81,21 @@ class DataTypeIdentifier:
         else:
             print("\nNo missing values found in any column.")
 
+    def check_type(self):
+        email_count = self.data_type_counts['Email Address']
+        phone_count = self.data_type_counts['Telephone Number']
+        
+        if email_count > 4:
+            print("There are 4 or more email addresses.")
+        if email_count > 0 and phone_count > 0:
+            print('More than 0 emails and phone numbers')
+
 def main():
-    df = pd.read_csv('data2.csv')
+    df = pd.read_csv('data1.csv')
     data_identifier = DataTypeIdentifier(df)
     data_identifier.identify_data_types()
     data_identifier.print_results()
+    data_identifier.check_type()
 
 if __name__ == "__main__":
     main()
